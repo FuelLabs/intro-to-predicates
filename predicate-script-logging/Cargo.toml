@@ -1,5 +1,5 @@
 [package]
-name = "predicate"
+name = "script-test-example"
 description = "A cargo-generate template for Rust + Sway integration testing."
 version = "0.1.0"
 edition = "2021"
@@ -7,7 +7,7 @@ authors = ["Call Delegation <106365423+calldelegation@users.noreply.github.com>"
 license = "Apache-2.0"
 
 [dev-dependencies]
-fuels = { version = "0.55.0", features = ["fuel-core-lib"] }
+fuels = { version = "0.53.0", features = ["fuel-core-lib"] }
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
 [[test]]

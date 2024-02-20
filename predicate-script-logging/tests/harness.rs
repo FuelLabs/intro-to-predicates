@@ -1,12 +1,12 @@
 /* ANCHOR: all */
 use fuels::{
     prelude::*,
-    crypto::SecretKey
+    accounts::fuel_crypto::SecretKey
 };
 
 abigen!(Script(
     name = "MultiSigScript",
-    abi = "./out/debug/script-test-example-abi.json"
+    abi = "./out/debug/predicate-script-logging-abi.json"
 ));
 
 #[tokio::test]
@@ -18,6 +18,8 @@ async fn script_logs() -> Result<()> {
         .unwrap();
 
     let mut wallet: WalletUnlocked = WalletUnlocked::new_from_private_key(private_key, None);
+
+    // TOKENS
 
     let all_coins = [&wallet]
         .iter()
@@ -38,16 +40,15 @@ async fn script_logs() -> Result<()> {
         });
 
     // ANCHOR: logs
-    let bin_path = "./out/debug/script-test-example.bin";
+    let bin_path = "./out/debug/predicate-script-logging.bin";
 
     let instance = MultiSigScript::new(wallet.clone(), bin_path);
 
     let response = instance.main().call().await?;
-
+    
     let logs = response.decode_logs();
     println!("{:?}", logs);
     // ANCHOR_END: logs
-
     Ok(())
     // Now you have an instance of your contract you can use to test each function
 }

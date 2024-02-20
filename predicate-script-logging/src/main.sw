@@ -13,6 +13,6 @@ configurable {
 
 fn main() -> bool {
     log(SECRET_NUMBER);
-    predicate
+    return true;
 }
 /* ANCHOR_END: all */
