@@ -3,18 +3,26 @@
 predicate;
 // ANCHOR_END: predicate
 
-// ANCHOR: import
+// ANCHOR: import_parent
 use std::{
+    // ANCHOR: import_tx
     tx::{
         tx_witness_data,
         tx_witnesses_count,
         tx_id
     },
+    // ANCHOR_END: import_tx
+    // ANCHOR: import_zero_b256
     constants::ZERO_B256,
+    // ANCHOR_END: import_zero_b256
+    // ANCHOR: import_b512
     b512::B512,
+    // ANCHOR_END: import_b512
+    // ANCHOR: import_ecr
     ecr::ec_recover_address
+    // ANCHOR_END: import_ecr
 };
-// ANCHOR_END: import
+// ANCHOR_END: import_parent
 
 // ANCHOR: configurable
 configurable {
@@ -25,9 +33,9 @@ configurable {
         Address::from(0x0000000000000000000000000000000000000000000000000000000000000000)
     ]   
 }
-// ANCHOR: configurable
+// ANCHOR_END: configurable
 
-// Should return 
+// ANCHOR: signature_verification_parent
 fn verify_signature(i: u64) -> u64 {
     // Discard any out of bounds signatures
     if (i >= tx_witnesses_count()) {
@@ -38,6 +46,7 @@ fn verify_signature(i: u64) -> u64 {
  
     let mut j = 0;
 
+    // ANCHOR: verification_loop
     while j < 3 {
         let current_signature = tx_witness_data::<B512>(j);
         
@@ -50,7 +59,9 @@ fn verify_signature(i: u64) -> u64 {
         j += 1;
     }
     return 0;
+    // ANCHOR_END: verification_loop
 }
+// ANCHOR_END: signature_verification_parent
 
 // ANCHOR: main
 fn main() -> bool {
