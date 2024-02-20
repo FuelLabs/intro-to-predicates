@@ -15,7 +15,7 @@ use fuels::{
 // ANCHOR: predicate_abi
 abigen!(Predicate(
     name = "MultiSig",
-    abi = "./out/debug/multisig-predicate-abi.json"
+    abi = "./out/debug/predicate-abi.json"
 ));
 // ANCHOR_END: predicate_abi
 
@@ -98,7 +98,7 @@ async fn multisig_two_of_three() -> Result<()> {
 
     // ANCHOR: predicate_test
     // PREDICATE
-    let predicate_binary_path = "./out/debug/multisig-predicate.bin";
+    let predicate_binary_path = "./out/debug/predicate.bin";
     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
         .with_provider(provider.clone())
         // ANCHOR: load_configurables
@@ -174,7 +174,7 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
         .with_SIGNERS(signers);
 
     // PREDICATE
-    let predicate_binary_path = "./out/debug/multisig-predicate.bin";
+    let predicate_binary_path = "./out/debug/predicate.bin";
     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
         .with_provider(provider.clone())
         .with_configurables(configurables);
@@ -238,7 +238,7 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
         .with_SIGNERS(signers);
 
     // PREDICATE
-    let predicate_binary_path = "./out/debug/multisig-predicate.bin";
+    let predicate_binary_path = "./out/debug/predicate.bin";
     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
         .with_provider(provider.clone())
         .with_configurables(configurables);
