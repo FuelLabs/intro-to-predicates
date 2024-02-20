@@ -1,3 +1,4 @@
+/* ANCHOR: all */
 use fuels::{
     prelude::*,
     crypto::SecretKey
@@ -36,6 +37,7 @@ async fn script_logs() -> Result<()> {
             wallet.set_provider(provider.clone());
         });
 
+    // ANCHOR: logs
     let bin_path = "./out/debug/script-test-example.bin";
 
     let instance = MultiSigScript::new(wallet.clone(), bin_path);
@@ -44,7 +46,9 @@ async fn script_logs() -> Result<()> {
 
     let logs = response.decode_logs();
     println!("{:?}", logs);
+    // ANCHOR_END: logs
 
     Ok(())
     // Now you have an instance of your contract you can use to test each function
 }
+/* ANCHOR_END: all */
