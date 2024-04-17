@@ -3,7 +3,7 @@ name = "core"
 source = "path+from-root-0EE950A4219DB4B4"
 
 [[package]]
-name = "predicate-script-logging"
+name = "predicate-template"
 source = "member"
 dependencies = ["std"]
 
