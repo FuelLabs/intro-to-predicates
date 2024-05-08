@@ -36,12 +36,12 @@ jobs:
         forc build
         cargo test
 
-    - name: Build and test in predicate script logging
+    - name: Build predicate script logging
       run: |
         cd predicate-script-logging
         forc build
 
-    - name: Build and test in predicate template
+    - name: Build predicate template
       run: |
         cd predicate-template
         forc build
