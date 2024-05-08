@@ -1,7 +1,7 @@
 /* ANCHOR: all */
 use fuels::{
     prelude::*,
-    accounts::fuel_crypto::SecretKey
+    crypto::SecretKey
 };
 
 abigen!(Script(
@@ -29,7 +29,7 @@ async fn script_logs() -> Result<()> {
         .collect::<Vec<_>>();
 
     // PROVIDER
-    let node_config = Config::default();
+    let node_config = NodeConfig::default();
 
     let provider = setup_test_provider(all_coins, vec![], Some(node_config), None).await.unwrap();
 
