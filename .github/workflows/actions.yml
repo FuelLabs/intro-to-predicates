@@ -40,4 +40,9 @@ jobs:
       run: |
         cd predicate-script-logging
         forc build
-        cargo test
+
+    - name: Build and test in predicate template
+      run: |
+        cd predicate-template
+        forc build
+
