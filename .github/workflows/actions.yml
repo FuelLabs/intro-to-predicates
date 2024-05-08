@@ -33,16 +33,19 @@ jobs:
     - name: Build and test in multisig-predicate
       run: |
         cd multisig-predicate
+        forc fmt --check
         forc build
         cargo test
 
     - name: Build predicate script logging
       run: |
         cd predicate-script-logging
+        forc fmt --check
         forc build
 
     - name: Build predicate template
       run: |
         cd predicate-template
+        forc fmt --check
         forc build
 
