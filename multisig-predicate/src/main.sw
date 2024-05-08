@@ -1,17 +1,26 @@
- /* ANCHOR: all */ // ANCHOR: predicate
+/* ANCHOR: all */
+// ANCHOR: predicate
 predicate;
 // ANCHOR_END: predicate
 
 // ANCHOR: import_parent
 use std::{
-    b512::B512,
-    constants::ZERO_B256,
-    ecr::ec_recover_address,
+    // ANCHOR: import_tx
     tx::{
-        tx_id,
         tx_witness_data,
         tx_witnesses_count,
+        tx_id
     },
+    // ANCHOR_END: import_tx
+    // ANCHOR: import_zero_b256
+    constants::ZERO_B256,
+    // ANCHOR_END: import_zero_b256
+    // ANCHOR: import_b512
+    b512::B512,
+    // ANCHOR_END: import_b512
+    // ANCHOR: import_ecr
+    ecr::ec_recover_address
+    // ANCHOR_END: import_ecr
 };
 // ANCHOR_END: import_parent
 
@@ -21,8 +30,8 @@ configurable {
     SIGNERS: [Address; 3] = [
         Address::from(0x0000000000000000000000000000000000000000000000000000000000000000),
         Address::from(0x0000000000000000000000000000000000000000000000000000000000000000),
-        Address::from(0x0000000000000000000000000000000000000000000000000000000000000000),
-    ],
+        Address::from(0x0000000000000000000000000000000000000000000000000000000000000000)
+    ]   
 }
 // ANCHOR_END: configurable
 
@@ -34,13 +43,13 @@ fn verify_signature(i: u64) -> u64 {
     }
 
     let tx_hash = tx_id();
-
+ 
     let mut j = 0;
 
     // ANCHOR: verification_loop
     while j < 3 {
         let current_signature = tx_witness_data::<B512>(j);
-
+        
         let current_address = ec_recover_address(current_signature, tx_hash).unwrap();
 
         if current_address == SIGNERS[i] {
@@ -68,4 +77,5 @@ fn main() -> bool {
     }
     return false;
 }
-// ANCHOR_END: main /* ANCHOR_END: all */ 
+// ANCHOR_END: main 
+/* ANCHOR_END: all */

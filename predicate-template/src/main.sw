@@ -1,5 +1,7 @@
- /* ANCHOR: all */ predicate;
+/* ANCHOR: all */
+predicate;
 
 fn main() -> bool {
     false
-} /* ANCHOR_END: all */ 
+}
+/* ANCHOR_END: all */
