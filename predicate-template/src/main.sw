@@ -2,6 +2,6 @@
 predicate;
 
 fn main() -> bool {
-    false
+    true
 }
 /* ANCHOR_END: all */
