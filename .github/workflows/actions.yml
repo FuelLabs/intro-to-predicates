@@ -1,0 +1,47 @@
+name: Rust Cargo Test for Multiple Directories
+
+on:
+  pull_request:
+
+jobs:
+  build_and_test:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
+
+    - name: Set up Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
+        profile: minimal
+        override: true
+
+    - name: Install Fuelup
+      run: |
+        curl https://install.fuel.network | sh
+
+    - name: Modify Path
+      run: echo "$HOME/.fuelup/bin:$PATH" >> $GITHUB_PATH
+
+    - name: Set Fuelup environment and add component
+      run: |
+        fuelup default testnet
+
+    - name: Build and test in multisig-predicate
+      run: |
+        cd multisig-predicate
+        forc build
+        cargo test
+
+    - name: Build predicate script logging
+      run: |
+        cd predicate-script-logging
+        forc build
+
+    - name: Build predicate template
+      run: |
+        cd predicate-template
+        forc build
+

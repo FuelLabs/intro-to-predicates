@@ -1,14 +1,14 @@
 /* ANCHOR: all */
 // ANCHOR: imports
 use fuels::{
+    crypto::SecretKey,
     accounts::{
-        fuel_crypto::SecretKey,
         predicate::Predicate,
         wallet::WalletUnlocked,
         Account,
     },
     prelude::*,
-    types::transaction_builders::{NetworkInfo, ScriptTransactionBuilder, BuildableTransaction},
+    types::transaction_builders::{ScriptTransactionBuilder, BuildableTransaction},
 };
 // ANCHOR_END: imports
 
@@ -20,7 +20,7 @@ abigen!(Predicate(
 // ANCHOR_END: predicate_abi
 
 // ANCHOR: setup
-async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, NetworkInfo, AssetId) {
+async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, AssetId) {
     // ANCHOR: wallet_setup
     // WALLETS
     let private_key_0: SecretKey =
@@ -55,11 +55,9 @@ async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, NetworkI
 
     // ANCHOR: network_setup
     // NETWORKS
-    let node_config = Config::default();
+    let node_config = NodeConfig::default();
 
     let provider = setup_test_provider(all_coins, vec![], Some(node_config), None).await.unwrap();
-
-    let network_info = provider.network_info().await.unwrap();
     // ANCHOR_END: network_setup
 
     [&mut wallet_0, &mut wallet_1, &mut wallet_2]
@@ -71,7 +69,6 @@ async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, NetworkI
     return (
         vec![wallet_0, wallet_1, wallet_2],
         provider,
-        network_info,
         asset_id,
     );
 }
@@ -80,7 +77,7 @@ async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, NetworkI
 // ANCHOR: ordered_two_signatures
 #[tokio::test]
 async fn multisig_two_of_three() -> Result<()> {
-    let (wallets, provider, network_info, asset_id) = setup_wallets_and_network().await;
+    let (wallets, provider, asset_id) = setup_wallets_and_network().await;
 
     // ANCHOR: configurables
     // CONFIGURABLES
@@ -91,9 +88,9 @@ async fn multisig_two_of_three() -> Result<()> {
         wallets[2].address().into(),
     ];
 
-    let configurables = MultiSigConfigurables::new()
-        .with_REQUIRED_SIGNATURES(required_signatures)
-        .with_SIGNERS(signers);
+    let configurables = MultiSigConfigurables::default()
+        .with_REQUIRED_SIGNATURES(required_signatures)?
+        .with_SIGNERS(signers)?;
     // ANCHOR_END: configurables
 
     // ANCHOR: predicate_test
@@ -129,15 +126,14 @@ async fn multisig_two_of_three() -> Result<()> {
             input_coin,
             output_coin,
             TxPolicies::default(),
-            network_info.clone(),
         )
     };
     // ANCHOR_END: transaction_building
 
     // ANCHOR: sign_transaction
     // SIGN TRANSACTION
-    wallets[0].sign_transaction(&mut tb);
-    wallets[1].sign_transaction(&mut tb);
+    tb.add_signer(wallets[0].clone())?;
+    tb.add_signer(wallets[1].clone())?;
     // ANCHOR_END: sign_transaction
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
@@ -159,7 +155,7 @@ async fn multisig_two_of_three() -> Result<()> {
 // ANCHOR: unordered_three_signatures
 #[tokio::test]
 async fn multisig_mixed_three_of_three() -> Result<()> {
-    let (wallets, provider, network_info, asset_id) = setup_wallets_and_network().await;
+    let (wallets, provider, asset_id) = setup_wallets_and_network().await;
 
     // CONFIGURABLES
     let required_signatures = 3;
@@ -169,9 +165,9 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
         wallets[2].address().into(),
     ];
 
-    let configurables = MultiSigConfigurables::new()
-        .with_REQUIRED_SIGNATURES(required_signatures)
-        .with_SIGNERS(signers);
+    let configurables = MultiSigConfigurables::default()
+        .with_REQUIRED_SIGNATURES(required_signatures)?
+        .with_SIGNERS(signers)?;
 
     // PREDICATE
     let predicate_binary_path = "./out/debug/predicate.bin";
@@ -197,14 +193,13 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
             input_coin,
             output_coin,
             TxPolicies::default(),
-            network_info.clone(),
         )
     };
 
     // NOTE Cannot be signed in any order
-    wallets[2].sign_transaction(&mut tb);
-    wallets[0].sign_transaction(&mut tb);
-    wallets[1].sign_transaction(&mut tb);
+    tb.add_signer(wallets[2].clone())?;
+    tb.add_signer(wallets[0].clone())?;
+    tb.add_signer(wallets[1].clone())?;
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
@@ -223,7 +218,7 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
 // ANCHOR: not_enough_signatures
 #[tokio::test]
 async fn multisig_not_enough_signatures_fails() -> Result<()> {
-    let (wallets, provider, network_info, asset_id) = setup_wallets_and_network().await;
+    let (wallets, provider, asset_id) = setup_wallets_and_network().await;
 
     // CONFIGURABLES
     let required_signatures = 2;
@@ -233,9 +228,9 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
         wallets[2].address().into(),
     ];
 
-    let configurables = MultiSigConfigurables::new()
-        .with_REQUIRED_SIGNATURES(required_signatures)
-        .with_SIGNERS(signers);
+    let configurables = MultiSigConfigurables::default()
+        .with_REQUIRED_SIGNATURES(required_signatures)?
+        .with_SIGNERS(signers)?;
 
     // PREDICATE
     let predicate_binary_path = "./out/debug/predicate.bin";
@@ -261,11 +256,10 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
             input_coin,
             output_coin,
             TxPolicies::default(),
-            network_info.clone(),
         )
     };
 
-    wallets[0].sign_transaction(&mut tb);
+    tb.add_signer(wallets[0].clone())?;
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
