@@ -6,6 +6,8 @@ edition = "2021"
 authors = ["Call Delegation <106365423+calldelegation@users.noreply.github.com>"]
 license = "Apache-2.0"
 
+build = "build.rs"
+
 [dev-dependencies]
 fuels = { version = "0.66.5", features = ["fuel-core-lib"] }
 fuel-core = { version = "0.36.0", default-features = false, features = [
@@ -17,6 +19,14 @@ fuel-core-poa = { version = "0.36.0", default-features = false }
 fuel-core-services = { version = "0.36.0", default-features = false }
 fuel-core-types = { version = "0.36.0", default-features = false }
 tokio = { version = "1.12", features = ["rt", "macros"] }
+
+[build-dependencies]
+anyhow = { workspace = true, features = ["std"] }
+flate2 = { workspace = true, features = ["zlib"] }
+fuels-accounts = { workspace = true, features = ["std"] }
+reqwest = { workspace = true, features = ["blocking", "default-tls"] }
+semver = { workspace = true }
+tar = { workspace = true }
 
 [[test]]
 harness = true
