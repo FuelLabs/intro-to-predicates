@@ -4498,6 +4498,7 @@ dependencies = [
 name = "predicate"
 version = "0.1.0"
 dependencies = [
+ "fuel-core-client",
  "fuels",
  "tokio",
 ]

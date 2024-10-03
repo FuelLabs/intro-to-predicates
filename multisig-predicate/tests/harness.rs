@@ -7,9 +7,16 @@ use fuels::{
         wallet::WalletUnlocked,
         Account,
     },
+    client::{
+        FuelClient,
+        PaginationRequest
+    },
     prelude::*,
     types::transaction_builders::{ScriptTransactionBuilder, BuildableTransaction},
 };
+
+use fuel_core_client::client::types::TransactionStatus;
+
 // ANCHOR_END: imports
 
 // ANCHOR: predicate_abi
@@ -48,7 +55,7 @@ async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, AssetId)
     let all_coins = [&wallet_0, &wallet_1, &wallet_2]
         .iter()
         .flat_map(|wallet| {
-            setup_single_asset_coins(wallet.address(), AssetId::default(), 10, 100)
+            setup_single_asset_coins(wallet.address(), AssetId::default(), 10, 1_000_000)
         })
         .collect::<Vec<_>>();
     // ANCHOR_END: token_setup
@@ -74,10 +81,33 @@ async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, AssetId)
 }
 // ANCHOR_END: setup
 
+async fn get_accumulated_fee(client: &FuelClient) -> u64 {
+    let status = client
+        .transactions(PaginationRequest {
+            cursor: None,
+            results: 1,
+            direction: fuels::client::PageDirection::Forward,
+        })
+        .await
+        .unwrap()
+        .results[0]
+        .status
+        .clone();
+
+    let mut accumulated_fee = 0;
+
+    if let TransactionStatus::Success { total_fee, .. } = status {
+        accumulated_fee = total_fee;
+    }
+
+    accumulated_fee
+}
+
 // ANCHOR: ordered_two_signatures
 #[tokio::test]
 async fn multisig_two_of_three() -> Result<()> {
     let (wallets, provider, asset_id) = setup_wallets_and_network().await;
+    let client = FuelClient::new(provider.url()).unwrap();
 
     // ANCHOR: configurables
     // CONFIGURABLES
@@ -105,29 +135,22 @@ async fn multisig_two_of_three() -> Result<()> {
     
     // ANCHOR: fund_predicate
     // FUND PREDICATE
-    let multisig_amount = 1;
+    let multisig_amount = 100;
     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
 
-    println!("Wallet Balance, {:?}", wallet_0_amount);
-    println!("MultiSig Balance, {:?}", provider.get_asset_balance(predicate.address(), asset_id).await?);
-
-    let res = wallets[0]
+    wallets[0]
         .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
         .await?;
+    let mut accumulated_fee = get_accumulated_fee(&client).await;
     // ANCHOR_END: fund_predicate
-    println!("TXN, {:?}", res);
-
-    println!("Wallet Balance After, {:?}", provider.get_asset_balance(wallets[0].address(), asset_id).await?);
-    println!("MultiSig Balance After, {:?}", provider.get_asset_balance(predicate.address(), asset_id).await?);
-
-
+        
     // ANCHOR: transaction_building
     // BUILD TRANSACTION
     let mut tb: ScriptTransactionBuilder = {
         let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
         // ANCHOR: output
         let output_coin =
-            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
+            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount - 1); // minus 1 for gas
         // ANCHOR_END: output
 
         ScriptTransactionBuilder::prepare_transfer(
@@ -145,138 +168,144 @@ async fn multisig_two_of_three() -> Result<()> {
     // ANCHOR_END: sign_transaction
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
-    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount - accumulated_fee);
 
     // ANCHOR: broadcast_transaction
     // SPEND PREDICATE
     let tx: ScriptTransaction = tb.build(provider.clone()).await?;
     provider.send_transaction_and_await_commit(tx).await?;
+    accumulated_fee += get_accumulated_fee(&client).await;
     // ANCHOR_END: broadcast_transaction
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, 0);
-    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - accumulated_fee);
 
     Ok(())
 }
 // ANCHOR_END: ordered_two_signatures
 
-// // ANCHOR: unordered_three_signatures
-// #[tokio::test]
-// async fn multisig_mixed_three_of_three() -> Result<()> {
-//     let (wallets, provider, asset_id) = setup_wallets_and_network().await;
+// ANCHOR: unordered_three_signatures
+#[tokio::test]
+async fn multisig_mixed_three_of_three() -> Result<()> {
+    let (wallets, provider, asset_id) = setup_wallets_and_network().await;
+    let client = FuelClient::new(provider.url()).unwrap();
 
-//     // CONFIGURABLES
-//     let required_signatures = 3;
-//     let signers: [Address; 3] = [
-//         wallets[0].address().into(),
-//         wallets[1].address().into(),
-//         wallets[2].address().into(),
-//     ];
+    // CONFIGURABLES
+    let required_signatures = 3;
+    let signers: [Address; 3] = [
+        wallets[0].address().into(),
+        wallets[1].address().into(),
+        wallets[2].address().into(),
+    ];
 
-//     let configurables = MultiSigConfigurables::default()
-//         .with_REQUIRED_SIGNATURES(required_signatures)?
-//         .with_SIGNERS(signers)?;
+    let configurables = MultiSigConfigurables::default()
+        .with_REQUIRED_SIGNATURES(required_signatures)?
+        .with_SIGNERS(signers)?;
 
-//     // PREDICATE
-//     let predicate_binary_path = "./out/debug/predicate.bin";
-//     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
-//         .with_provider(provider.clone())
-//         .with_configurables(configurables);
+    // PREDICATE
+    let predicate_binary_path = "./out/debug/predicate.bin";
+    let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
+        .with_provider(provider.clone())
+        .with_configurables(configurables);
 
-//     let multisig_amount = 100;
-//     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
-
-
-//     wallets[0]
-//         .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
-//         .await?;
-
-//     let mut tb: ScriptTransactionBuilder = {
-//         let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
-
-//         let output_coin =
-//             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
-
-//         ScriptTransactionBuilder::prepare_transfer(
-//             input_coin,
-//             output_coin,
-//             TxPolicies::default(),
-//         )
-//     };
-
-//     // NOTE Cannot be signed in any order
-//     tb.add_signer(wallets[2].clone())?;
-//     tb.add_signer(wallets[0].clone())?;
-//     tb.add_signer(wallets[1].clone())?;
-
-//     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
-//     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
-
-//     // SPEND PREDICATE
-//     let tx: ScriptTransaction = tb.build(provider.clone()).await?;
-//     provider.send_transaction_and_await_commit(tx).await?;
-
-//     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, 0);
-//     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount);
-
-//     Ok(())
-// }
-// // ANCHOR_END: unordered_three_signatures
-
-// // ANCHOR: not_enough_signatures
-// #[tokio::test]
-// async fn multisig_not_enough_signatures_fails() -> Result<()> {
-//     let (wallets, provider, asset_id) = setup_wallets_and_network().await;
-
-//     // CONFIGURABLES
-//     let required_signatures = 2;
-//     let signers: [Address; 3] = [
-//         wallets[0].address().into(),
-//         wallets[1].address().into(),
-//         wallets[2].address().into(),
-//     ];
-
-//     let configurables = MultiSigConfigurables::default()
-//         .with_REQUIRED_SIGNATURES(required_signatures)?
-//         .with_SIGNERS(signers)?;
-
-//     // PREDICATE
-//     let predicate_binary_path = "./out/debug/predicate.bin";
-//     let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
-//         .with_provider(provider.clone())
-//         .with_configurables(configurables);
-
-//     let multisig_amount = 100;
-//     let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
+    let multisig_amount = 100;
+    let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
 
 
-//     wallets[0]
-//         .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
-//         .await?;
+    wallets[0]
+        .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
+        .await?;
+    let mut accumulated_fee = get_accumulated_fee(&client).await;
 
-//     let mut tb: ScriptTransactionBuilder = {
-//         let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
+    let mut tb: ScriptTransactionBuilder = {
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
 
-//         let output_coin =
-//             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
+        let output_coin =
+            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount - 1); // minus 1 for gas
 
-//         ScriptTransactionBuilder::prepare_transfer(
-//             input_coin,
-//             output_coin,
-//             TxPolicies::default(),
-//         )
-//     };
+        ScriptTransactionBuilder::prepare_transfer(
+            input_coin,
+            output_coin,
+            TxPolicies::default(),
+        )
+    };
 
-//     tb.add_signer(wallets[0].clone())?;
+    // NOTE Cannot be signed in any order
+    tb.add_signer(wallets[2].clone())?;
+    tb.add_signer(wallets[0].clone())?;
+    tb.add_signer(wallets[1].clone())?;
 
-//     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
-//     assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
+    assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount - accumulated_fee);
 
-//     // SPEND PREDICATE
-//     let tx: ScriptTransaction = tb.build(provider.clone()).await?;
-//     let _ = provider.send_transaction_and_await_commit(tx).await.is_err();
+    // SPEND PREDICATE
+    let tx: ScriptTransaction = tb.build(provider.clone()).await?;
+    provider.send_transaction_and_await_commit(tx).await?;
+    accumulated_fee += get_accumulated_fee(&client).await;
 
-//     Ok(())
-// }
-// // ANCHOR_END: not_enough_signatures
-// /* ANCHOR_END: all */
+    assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, 0);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - accumulated_fee);
+
+    Ok(())
+}
+// ANCHOR_END: unordered_three_signatures
+
+// ANCHOR: not_enough_signatures
+#[tokio::test]
+async fn multisig_not_enough_signatures_fails() -> Result<()> {
+    let (wallets, provider, asset_id) = setup_wallets_and_network().await;
+    let client = FuelClient::new(provider.url()).unwrap();
+
+    // CONFIGURABLES
+    let required_signatures = 2;
+    let signers: [Address; 3] = [
+        wallets[0].address().into(),
+        wallets[1].address().into(),
+        wallets[2].address().into(),
+    ];
+
+    let configurables = MultiSigConfigurables::default()
+        .with_REQUIRED_SIGNATURES(required_signatures)?
+        .with_SIGNERS(signers)?;
+
+    // PREDICATE
+    let predicate_binary_path = "./out/debug/predicate.bin";
+    let predicate: Predicate = Predicate::load_from(predicate_binary_path)?
+        .with_provider(provider.clone())
+        .with_configurables(configurables);
+
+    let multisig_amount = 100;
+    let wallet_0_amount = provider.get_asset_balance(wallets[0].address(), asset_id).await?;
+
+
+    wallets[0]
+        .transfer(predicate.address(), multisig_amount, asset_id, TxPolicies::default())
+        .await?;
+    let accumulated_fee = get_accumulated_fee(&client).await;
+
+    let mut tb: ScriptTransactionBuilder = {
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
+
+        let output_coin =
+            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount - 1); // minus 1 for gas
+
+        ScriptTransactionBuilder::prepare_transfer(
+            input_coin,
+            output_coin,
+            TxPolicies::default(),
+        )
+    };
+
+    tb.add_signer(wallets[0].clone())?;
+
+    assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount - accumulated_fee);
+
+    // SPEND PREDICATE
+    let tx: ScriptTransaction = tb.build(provider.clone()).await?;
+    let _ = provider.send_transaction_and_await_commit(tx).await.is_err();
+
+    Ok(())
+}
+// ANCHOR_END: not_enough_signatures
+/* ANCHOR_END: all */
