@@ -116,10 +116,10 @@ async fn multisig_two_of_three() -> Result<()> {
     // ANCHOR: transaction_building
     // BUILD TRANSACTION
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
         // ANCHOR: output
         let output_coin =
-            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
+            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount - 1);
         // ANCHOR_END: output
 
         ScriptTransactionBuilder::prepare_transfer(
@@ -137,7 +137,7 @@ async fn multisig_two_of_three() -> Result<()> {
     // ANCHOR_END: sign_transaction
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
-    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount - 1);
 
     // ANCHOR: broadcast_transaction
     // SPEND PREDICATE
@@ -146,7 +146,7 @@ async fn multisig_two_of_three() -> Result<()> {
     // ANCHOR_END: broadcast_transaction
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, 0);
-    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - 2);
 
     Ok(())
 }
@@ -184,10 +184,10 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
 
         let output_coin =
-            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
+            predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount - 1);
 
         ScriptTransactionBuilder::prepare_transfer(
             input_coin,
@@ -202,14 +202,14 @@ async fn multisig_mixed_three_of_three() -> Result<()> {
     tb.add_signer(wallets[1].clone())?;
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
-    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount - 1);
 
     // SPEND PREDICATE
     let tx: ScriptTransaction = tb.build(provider.clone()).await?;
     provider.send_transaction_and_await_commit(tx).await?;
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, 0);
-    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - 2);
 
     Ok(())
 }
@@ -247,7 +247,7 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
         .await?;
 
     let mut tb: ScriptTransactionBuilder = {
-        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1).await?;
+        let input_coin = predicate.get_asset_inputs_for_amount(asset_id, 1, None).await?;
 
         let output_coin =
             predicate.get_asset_outputs_for_amount(wallets[0].address().into(), asset_id, multisig_amount);
@@ -262,7 +262,7 @@ async fn multisig_not_enough_signatures_fails() -> Result<()> {
     tb.add_signer(wallets[0].clone())?;
 
     assert_eq!(provider.get_asset_balance(predicate.address(), asset_id).await?, multisig_amount);
-    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount);
+    assert_eq!(provider.get_asset_balance(wallets[0].address(), asset_id).await?, wallet_0_amount - multisig_amount - 1);
 
     // SPEND PREDICATE
     let tx: ScriptTransaction = tb.build(provider.clone()).await?;
