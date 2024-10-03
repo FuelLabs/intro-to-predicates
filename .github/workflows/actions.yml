@@ -27,7 +27,7 @@ jobs:
 
     - name: Set Fuelup environment and add component
       run: |
-        fuelup default testnet
+        fuelup default latest
 
     - name: Build and test in multisig-predicate
       run: |
