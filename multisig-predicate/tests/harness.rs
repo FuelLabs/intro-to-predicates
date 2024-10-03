@@ -79,8 +79,8 @@ async fn setup_wallets_and_network() -> (Vec<WalletUnlocked>, Provider, AssetId)
         asset_id,
     );
 }
-// ANCHOR_END: setup
 
+// ANCHOR: get_accumulated_fee
 async fn get_accumulated_fee(client: &FuelClient) -> u64 {
     let status = client
         .transactions(PaginationRequest {
@@ -102,6 +102,8 @@ async fn get_accumulated_fee(client: &FuelClient) -> u64 {
 
     accumulated_fee
 }
+// ANCHOR_END: get_accumulated_fee
+// ANCHOR_END: setup
 
 // ANCHOR: ordered_two_signatures
 #[tokio::test]
