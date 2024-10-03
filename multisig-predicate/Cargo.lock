@@ -4508,7 +4508,11 @@ name = "predicate"
 version = "0.1.0"
 dependencies = [
  "fuel-core",
+ "fuel-core-chain-config",
  "fuel-core-client",
+ "fuel-core-poa",
+ "fuel-core-services",
+ "fuel-core-types 0.36.0",
  "fuels",
  "tokio",
 ]
