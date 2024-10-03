@@ -9,20 +9,18 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
-      # Checks out your repository under $GITHUB_WORKSPACE, so your job can access it
+      # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
 
     - name: Set up Rust
-      uses: rust-lang/setup-rust@v1
+      uses: dtolnay/rust-toolchain@master
       with:
-        rust-version: stable
-        profile: minimal
-        override: true
+        toolchain: 1.79.0
 
     - name: Install Fuelup
       run: |
         curl https://install.fuel.network | sh
 
-    - name: Modify PATH for Fuelup
+    - name: Modify Path
       run: echo "$HOME/.fuelup/bin:$PATH" >> $GITHUB_PATH
 
     - name: Set Fuelup environment and add component
@@ -44,3 +42,4 @@ jobs:
       run: |
         cd predicate-template
         forc build
+
