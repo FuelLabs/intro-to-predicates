@@ -7,7 +7,7 @@ authors = ["Call Delegation <106365423+calldelegation@users.noreply.github.com>"
 license = "Apache-2.0"
 
 [dev-dependencies]
-fuels = { version = "0.66.9" }
+fuels = { version = "0.66.10" }
 fuel-core-client = { version = "0.40" }
 tokio = { version = "1.12", features = ["rt", "macros"] }
 
